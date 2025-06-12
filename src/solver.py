@@ -30,6 +30,7 @@ from scipy.stats import chi2
 __all__ = [
     "solve_resection_ols",
     "solve_resection_odr",
+    "confidence_ellipse"
 ]
 
 # -----------------------------------------------------------------------------
