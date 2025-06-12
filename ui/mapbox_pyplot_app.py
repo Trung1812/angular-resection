@@ -1,13 +1,15 @@
 """Streamlit UI for bearing-only resection using Mapbox and Matplotlib."""
 from __future__ import annotations
 
-import os
+import os, sys
 import re
 import numpy as np
 import matplotlib.pyplot as plt
 import streamlit as st
 import plotly.graph_objects as go
 from pyproj import Transformer
+
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
 from src import solve_resection_odr, confidence_ellipse
 
