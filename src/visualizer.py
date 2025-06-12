@@ -69,7 +69,7 @@ if __name__ == "__main__":
     sigma_deg = 0.5
     sigma_rad = np.radians(sigma_deg)
 
-    print(f"Testing bearing noise model with σ = {sigma_deg}° and outliers = 2%...")
+    print(f"Testing bearing noise model with theta = {sigma_deg} deg and outliers = 2%...")
     plot_bearing_distribution(true_bearing_rad, sigma_rad, outlier_prob=0.02)
 
     print("Testing anchor noise simulation with full covariance model...")
