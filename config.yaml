@@ -1,0 +1,29 @@
+compass_noise:
+  model: "von_mises"        
+  kappa: 13000                # High concentration (small error)
+  outlier_fraction: 0.03     # 3% chance of heavy-tailed spike
+  outlier_kappa: 2           # Wide spread for outliers
+
+anchor_error:
+  enable: true
+  GNSS_sigma:
+    E: 0.012                 # Standard deviation in meters (East)
+    N: 0.010                 # Standard deviation in meters (North)
+    rho: 0.0                 # Correlation coefficient
+  marker_diameter: 0.10      # Physical size of anchor marker in meters
+  map_offset: 0.05           # Mapping offset in meters
+  drift_velocity: 0.0        # Optional: drift in mm/year
+
+simulation:
+  monte_carlo_runs: 1000
+  true_position:
+    lat: 20.0000
+    lon: 105.0000
+  anchors:
+    - [20.0003, 105.0001]
+    - [19.9999, 105.0003]
+    - [20.0002, 105.0005]
+
+visualization:
+  map_center: [20.0000, 105.0000]
+  zoom_start: 17

@@ -1,0 +1,14 @@
+Metadata-Version: 2.4
+Name: angular_resection
+Version: 0.1.0
+Summary: 2D bearing-only resection and localization tools
+Author: Your Name
+Requires-Python: >=3.8
+Requires-Dist: numpy
+Requires-Dist: scipy
+Requires-Dist: pyproj
+Requires-Dist: folium
+Dynamic: author
+Dynamic: requires-dist
+Dynamic: requires-python
+Dynamic: summary

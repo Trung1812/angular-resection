@@ -1,80 +1,112 @@
 import numpy as np
-from scipy.stats import vonmises
+from scipy.stats import vonmises, uniform
 
-def normalize_angle(angle_rad):
-    """Normalize angle to range [-pi, pi]."""
-    return (angle_rad + np.pi) % (2 * np.pi) - np.pi
-
-def add_vonmises_noise(bearing_rad, sigma_rad, outlier_prob=0.02):
-    """
-    Adds noise to a bearing using a von Mises distribution and an optional outlier model.
+def generate_anchor_positions(num_anchors, target_pos, min_dist=20.0, max_dist=100.0):
+    """Simulating anchor positions
     
-    Parameters:
-        bearing_rad (float): True bearing in radians.
-        sigma_rad (float): Standard deviation of in-spec noise in radians.
-        outlier_prob (float): Probability of an outlier sample.
+    Parameters
+    ----------
+    num_anchors : int 
+        number of anchors
+    target_pos : Tuple[float, float]
+        position of the target
+    min_dist: float, default 20
+        minimun distance from anchor to target
+    max_dist: flow, default 100
+        maximun distance from anchor to target
     
-    Returns:
-        float: Noisy bearing in radians.
+    Return
+    ------
+    anchors : np.ndarray
+        the positions of anchor
     """
-    kappa_in_spec = 1 / sigma_rad**2
-    if np.random.rand() < outlier_prob:
-        # Outlier from broader von Mises or uniform distribution
-        return normalize_angle(bearing_rad + vonmises.rvs(kappa=2))
-    else:
-        return normalize_angle(bearing_rad + vonmises.rvs(kappa=kappa_in_spec))
+    anchors = []
+    angles = np.linspace(0, 2 * np.pi, num_anchors, endpoint=False)
+    for i in range(num_anchors):
+        angle = angles[i] + np.random.uniform(-0.1, 0.1)
+        distance = np.random.uniform(min_dist, max_dist)
+        x = target_pos[0] + distance * np.cos(angle)
+        y = target_pos[1] + distance * np.sin(angle)
+        anchors.append(np.array([x, y]))
+    return np.array(anchors)
 
-def build_anchor_covariance(sigma_e, sigma_n, rho, diameter, sigma_map, sigma_drift=0.0):
+def calculate_true_bearings(target_pos, anchor_positions):
     """
-    Constructs the 2x2 covariance matrix for an anchor point.
+    Calculate bearing from anchor position using the geometry formula:
 
-    Parameters:
-        sigma_e (float): GNSS standard deviation in East direction (meters).
-        sigma_n (float): GNSS standard deviation in North direction (meters).
-        rho (float): GNSS correlation coefficient between E and N.
-        diameter (float): Diameter of physical marker (meters).
-        sigma_map (float): Standard deviation due to mapping error (meters).
-        sigma_drift (float): Long-term drift standard deviation (meters).
-
-    Returns:
-        np.ndarray: 2x2 covariance matrix.
+    Parameters
+    ----------
+    target_pos: Tuple[float, float]
+        target position (x, y) coordinate
+    anchor_positions: (n, 2) np.ndarray
+        positions of anchors
+    
+    Return
+    ------
+    true_bearings: np.array
+        bearings in radian
     """
-    cov_gnss = np.array([
-        [sigma_e**2, rho * sigma_e * sigma_n],
-        [rho * sigma_e * sigma_n, sigma_n**2]
+    true_bearings = []
+    for anchor_pos in anchor_positions:
+        delta_x = anchor_pos[0] - target_pos[0]
+        delta_y = anchor_pos[1] - target_pos[1]
+        bearing = np.arctan2(delta_x, delta_y)
+        if bearing < 0:
+            bearing += 2 * np.pi
+        true_bearings.append(bearing)
+    return np.array(true_bearings)
+
+def add_anchor_noise(anchor_true_pos, sigma_gnss, marker_size=0.1, sigma_map=0.05):
+    """
+    Add noise to anchors (based on noise model)
+    Parameters
+    ----------
+    anchor_true_pos : np.ndarray
+        positions of anchor
+    sigma_gnss: float
+        error from gnss rover (in metre)
+    marker_size: np.array
+        size of the anchor to calculate error from pointing (in metre)
+    sigma_map: floaat
+        the error from map digitalization (in meter)
+
+    Return
+    ------
+    noisy_anchor_pos: np.ndarray
+        noise injected anchors' position
+    """
+    sigma_marker_sq = (marker_size**2) / 12.0
+    total_variance_x = sigma_gnss**2 + sigma_marker_sq + sigma_map**2
+    total_variance_y = sigma_gnss**2 + sigma_marker_sq + sigma_map**2
+    noisy_anchor_pos = anchor_true_pos + np.array([
+        np.random.normal(0, np.sqrt(total_variance_x)),
+        np.random.normal(0, np.sqrt(total_variance_y))
     ])
-    cov_marker = (diameter**2 / 12.0) * np.eye(2)
-    cov_map = sigma_map**2 * np.eye(2)
-    cov_drift = sigma_drift**2 * np.eye(2)
-    
-    return cov_gnss + cov_marker + cov_map + cov_drift
+    return noisy_anchor_pos
 
-def simulate_bearing_measurements(true_bearing_rads, sigma_rad, outlier_prob):
+def add_bearing_noise(true_bearing_rad, kappa_main, outlier_prob, kappa_outlier, uniform_outlier_range):
     """
-    Simulates noisy bearing measurements for a list of true bearings.
-    
-    Parameters:
-        true_bearing_rads (list): List of true bearings in radians.
-        sigma_rad (float): Standard deviation of in-spec noise in radians.
-        outlier_prob (float): Probability of a large spike.
-    
-    Returns:
-        list: List of noisy bearing measurements.
+    Injecting noise to bearing
+    Parameters
+    ----------
+    true_bearing_rad : np.array
+        ground true bearing
+    kappa_main : float
+        reciporical of error mean
+    outlier_prob : float
+        the potion of outliers
+    ....
+        
     """
-    return [add_vonmises_noise(b, sigma_rad, outlier_prob) for b in true_bearing_rads]
-
-def simulate_anchor_positions(true_anchors, cov_matrices):
-    """
-    Simulates noisy anchor positions by adding multivariate Gaussian noise.
+    noise_rad = 0.0
+    if np.random.rand() < outlier_prob:
+        if np.random.rand() < 0.5:
+            noise_rad = vonmises.rvs(kappa_outlier, loc=0)
+        else:
+            noise_rad = uniform.rvs(loc=uniform_outlier_range[0], scale=uniform_outlier_range[1] - uniform_outlier_range[0])
+    else:
+        noise_rad = vonmises.rvs(kappa_main, loc=0)
     
-    Parameters:
-        true_anchors (list of [x, y]): List of true anchor positions.
-        cov_matrices (list of np.ndarray): Corresponding 2x2 covariance matrices.
-    
-    Returns:
-        list: List of noisy anchor positions.
-    """
-    return [np.random.multivariate_normal(mean=anchor, cov=cov) 
-            for anchor, cov in zip(true_anchors, cov_matrices)]
-
-
+    noisy_bearing = true_bearing_rad + noise_rad
+    noisy_bearing = (noisy_bearing + np.pi) % (2 * np.pi) - np.pi
+    return noisy_bearing

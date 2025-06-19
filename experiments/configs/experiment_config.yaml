@@ -1,0 +1,34 @@
+# experiment_config.yaml
+
+global_settings:
+  n_simulations: 2000
+  target_true_pos: [0.0, 0.0]
+  anchor_min_dist_from_target: 100.0
+  anchor_max_dist_from_target: 120.0
+  marker_size: 2.0
+  sigma_map: 0.15
+  outlier_probability: 0.03
+  outlier_vonmises_kappa: 2
+  outlier_uniform_range: [-3.1415926535, 3.1415926535] # Pi in radians
+  log_file: "experiments/logs/ols_simulation_results.csv"
+  num_anchors_range: [5, 6, 7, 8, 9, 10]
+  solver: "odr"
+experiments:
+  - name: "BearingNoise_VaryAnchors"
+    description: "Fixed Anchor Noise, Varying Bearing Noise & Number of Anchors"
+    type: "fixed_anchor_vary_bearing"
+    fixed_sigma_gnss_m: 3.0
+    bearing_noise_kappas: [1000, 500, 200, 100, 50, 20, 10, 5, 2, 1]
+
+  - name: "AnchorNoise_VaryAnchors"
+    description: "Fixed Bearing Noise, Varying Anchor Noise & Number of Anchors"
+    type: "fixed_bearing_vary_anchor"
+    fixed_bearing_kappa: 100
+    anchor_gnss_sigmas_m: [1.0, 2.0, 3.0, 5.0, 10.0]
+
+  - name: "CombinedNoise_VaryAll"
+    description: "Varying both Bearing and Anchor Noise, and Number of Anchors"
+    type: "combined_noise"
+    num_anchors_subset: [5, 7, 9]
+    bearing_noise_kappas: [1000, 500, 100, 50, 10]
+    anchor_gnss_sigmas_m: [1.0, 5.0, 10.0]
